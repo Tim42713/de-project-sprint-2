@@ -42,7 +42,7 @@ CREATE TABLE public.shipping_info(
     PRIMARY KEY(shipping_id),
     FOREIGN KEY(shipping_transfer_id) REFERENCES shipping_transfer(id) ON UPDATE CASCADE,
     FOREIGN KEY(shipping_agreement_id) REFERENCES shipping_agreement(agreement_id) ON UPDATE CASCADE,
-    FOREIGN KEY(shipping_country_rate_id) REFERENCES shipping_country_rates(id) ON UPDATE CASCADE,
+    FOREIGN KEY(shipping_country_rate_id) REFERENCES shipping_country_rates(id) ON UPDATE CASCADE
 );
 
 -- создаем таблицу shipping_status
