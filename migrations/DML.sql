@@ -6,7 +6,7 @@ SELECT DISTINCT
 FROM public.shipping;
 
 -- check 
--- SELECT * FROM public.shipping_country_rates LIMIT 10;
+SELECT * FROM public.shipping_country_rates LIMIT 10;
 
 -- заполняем таблицу shipping_agreement
 INSERT INTO public.shipping_agreement(agreement_id, agreement_number, agreement_rate, agreement_commission)
@@ -18,7 +18,7 @@ SELECT DISTINCT
 FROM shipping;
 
 -- check
--- SELECT * FROM public.shipping_agreement LIMIT 10;
+SELECT * FROM public.shipping_agreement LIMIT 10;
 
 -- заполняем таблицу public.shipping_transfer
 INSERT INTO public.shipping_transfer(transfer_type, transfer_model, shipping_transfer_rate)
@@ -29,7 +29,7 @@ SELECT DISTINCT
 FROM shipping
 
 -- check 
--- SELECT * FROM public.shipping_transfer LIMIT 10;
+SELECT * FROM public.shipping_transfer LIMIT 10;
 
 -- заполняем таблицу public.shipping_info
 INSERT INTO public.shipping_info(shipping_id, vendor_id, payment_amount, shipping_plan_datetime, shipping_transfer_id, shipping_agreement_id, shipping_country_rate_id)
@@ -46,16 +46,16 @@ LEFT JOIN public.shipping_transfer AS st ON s.shipping_transfer_description = co
 LEFT JOIN public.shipping_country_rates AS scr ON s.shipping_country = scr.shipping_country AND s.shipping_country_base_rate = scr.shipping_country_base_rate;
 
 -- check
--- SELECT * FROM public.shipping_info LIMIT 10;
+SELECT * FROM public.shipping_info LIMIT 10;
 
 -- заполняем таблицу public.shipping_status
 WITH ms AS (
-       SELECT DISTINCT ON(shippingid),
+       SELECT DISTINCT ON(shippingid)
        shippingid,
        status,
        state,
        state_datetime,
-       ROW NUMBER() OVER (PARTITION BY shippingid ORDER BY state_datetime DESC) AS r
+       ROW_NUMBER() OVER (PARTITION BY shippingid ORDER BY state_datetime DESC) AS r
        FROM public.shipping
        ORDER BY shippingid, state_datetime DESC
 ),
@@ -73,19 +73,28 @@ SELECT m.shippingid AS shipping_id,
        f.shipping_start_fact_datetime AS shipping_start_fact_datetime,
        f.shipping_end_fact_datetime AS shipping_end_fact_datetime
 FROM ms AS m
-LEFT JOIN fd AS f ON m.shipping_id = f.shippingid
+LEFT JOIN fd AS f ON m.shippingid = f.shippingid
 WHERE m.r = 1;
 
 -- check
--- SELECT * FROM public.shipping_status LIMIT 10;
+SELECT * FROM public.shipping_status LIMIT 10;
 
 -- создаем представление shipping_datamart
-CREATE OR REPLACE VIEW public.shipping_datamart AS (
-       SELECT si.shipping_id,
-              si.vendor_id,
-              st.transfer_type,
-              DATE_PART('day', age(ss.shipping_end_fact_datetime, ss.shipping_start_fact_datetime)) AS full_day_at_shipping,
-              (CASE WHEN ss.shipping_end_fact_datetime > si.shipping_plan_datetime THEN 1 ELSE 0 END) AS is_delay,
-              (CASE WHEN ss.status = 'finished' THEN 1 ELSE 0 END) AS is_shipping_finish,
-              
-)
+CREATE OR REPLACE VIEW public.shipping_datamart AS(
+SELECT si.shipping_id,
+       si.vendor_id,
+       st.transfer_type, 
+	   DATE_PART('day', age(ss.shipping_end_fact_datetime ,ss.shipping_start_fact_datetime)) AS full_day_at_shipping,
+	   (CASE WHEN ss.shipping_end_fact_datetime > si.shipping_plan_datetime THEN 1 ELSE 0 END) AS is_delay,
+	   (CASE WHEN status = 'finished' THEN 1 ELSE 0 END) AS is_shipping_finish,
+	   (CASE WHEN ss.shipping_end_fact_datetime > si.shipping_plan_datetime THEN 
+	   DATE_PART('day', age(ss.shipping_end_fact_datetime, si.shipping_plan_datetime)) ELSE 0 END) AS delay_day_at_shipping,
+	   si.payment_amount,
+	   (si.payment_amount * (scr.shipping_country_base_rate + sa.agreement_rate + st.shipping_transfer_rate)) AS vat,
+	   si.payment_amount * sa.agreement_commission AS profit
+FROM shipping_info si
+LEFT JOIN shipping_transfer st ON si.shipping_transfer_id = st.id 
+LEFT JOIN shipping_status ss ON si.shipping_id = ss.shipping_id 
+LEFT JOIN shipping_country_rates scr ON si.shipping_country_rate_id = scr.id 
+LEFT JOIN shipping_agreement sa ON si.shipping_agreement_id = sa.agreement_id 
+);
