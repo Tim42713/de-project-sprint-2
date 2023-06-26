@@ -23,8 +23,8 @@ SELECT * FROM public.shipping_agreement LIMIT 10;
 -- заполняем таблицу public.shipping_transfer
 INSERT INTO public.shipping_transfer(transfer_type, transfer_model, shipping_transfer_rate)
 SELECT DISTINCT
-       (regexp_split_to_array(shipping_transfer_description, ':'))[1]::text AS transfer_type,
-       (regexp_split_to_array(shipping_transfer_description, ':'))[2]::text AS transfer_model,
+       (regexp_split_to_array(shipping_transfer_description, ':'))[1]::varchar AS transfer_type,
+       (regexp_split_to_array(shipping_transfer_description, ':'))[2]::varchar AS transfer_model,
        shipping_transfer_rate
 FROM shipping
 
@@ -84,14 +84,14 @@ CREATE OR REPLACE VIEW public.shipping_datamart AS(
 SELECT si.shipping_id,
        si.vendor_id,
        st.transfer_type, 
-	   DATE_PART('day', age(ss.shipping_end_fact_datetime ,ss.shipping_start_fact_datetime)) AS full_day_at_shipping,
-	   (CASE WHEN ss.shipping_end_fact_datetime > si.shipping_plan_datetime THEN 1 ELSE 0 END) AS is_delay,
-	   (CASE WHEN status = 'finished' THEN 1 ELSE 0 END) AS is_shipping_finish,
-	   (CASE WHEN ss.shipping_end_fact_datetime > si.shipping_plan_datetime THEN 
-	   DATE_PART('day', age(ss.shipping_end_fact_datetime, si.shipping_plan_datetime)) ELSE 0 END) AS delay_day_at_shipping,
-	   si.payment_amount,
-	   (si.payment_amount * (scr.shipping_country_base_rate + sa.agreement_rate + st.shipping_transfer_rate)) AS vat,
-	   si.payment_amount * sa.agreement_commission AS profit
+	EXTRACT (DAY FROM (ss.shipping_end_fact_datetime - ss.shipping_start_fact_datetime)) AS full_day_at_shipping,
+	(CASE WHEN ss.shipping_end_fact_datetime > si.shipping_plan_datetime THEN 1 ELSE NULL END) AS is_delay,
+	(CASE WHEN status = 'finished' THEN 1 ELSE 0 END) AS is_shipping_finish,
+       (CASE WHEN ss.shipping_end_fact_datetime > si.shipping_plan_datetime THEN 
+	EXTRACT(DAY FROM (ss.shipping_end_fact_datetime - si.shipping_plan_datetime)) ELSE 0 END) AS delay_day_at_shipping,
+       si.payment_amount,
+	(si.payment_amount * (scr.shipping_country_base_rate + sa.agreement_rate + st.shipping_transfer_rate)) AS vat,
+	si.payment_amount * sa.agreement_commission AS profit
 FROM shipping_info si
 LEFT JOIN shipping_transfer st ON si.shipping_transfer_id = st.id 
 LEFT JOIN shipping_status ss ON si.shipping_id = ss.shipping_id 

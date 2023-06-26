@@ -7,7 +7,7 @@ DROP TABLE IF EXISTS public.shipping_status;
 -- создаем таблицу public.shipping_country_rates
 CREATE TABLE public.shipping_country_rates(
     id serial NOT NULL,
-    shipping_country text,
+    shipping_country varchar(30),
     shipping_country_base_rate NUMERIC(14, 3),
     PRIMARY KEY(id)
 );
@@ -15,7 +15,7 @@ CREATE TABLE public.shipping_country_rates(
 -- создаем таблицу public.shipping_agreement
 CREATE TABLE public.shipping_agreement(
     agreement_id bigint NOT NULL,
-    agreement_number text,
+    agreement_number varchar(50),
     agreement_rate numeric(14, 3),
     agreement_commission numeric(14, 3),
     PRIMARY KEY(agreement_id)
@@ -24,8 +24,8 @@ CREATE TABLE public.shipping_agreement(
 -- создаем таблицу public.shipping_transfer
 CREATE TABLE public.shipping_transfer(
     id serial NOT NULL,
-    transfer_type text,
-    transfer_model text,
+    transfer_type varchar(30),
+    transfer_model varchar(30),
     shipping_transfer_rate numeric(14, 3),
     PRIMARY KEY(id) 
 );
@@ -48,8 +48,8 @@ CREATE TABLE public.shipping_info(
 -- создаем таблицу shipping_status
 CREATE TABLE public.shipping_status(
     shipping_id bigint,
-    status text,
-    state text,
+    status varchar(30),
+    state varchar(30),
     shipping_start_fact_datetime timestamp,
     shipping_end_fact_datetime timestamp,
     PRIMARY KEY (shipping_id)
